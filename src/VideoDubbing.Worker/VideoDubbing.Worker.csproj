@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>dotnet-VideoDubbing.Worker-78a04a7f-0c97-42ab-94df-512c459ab8fa</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MassTransit.RabbitMQ" Version="8.3.4" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+    <PackageReference Include="Serilog.Extensions.Hosting" Version="8.0.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\VideoDubbing.Application\VideoDubbing.Application.csproj" />
+    <ProjectReference Include="..\VideoDubbing.Infrastructure\VideoDubbing.Infrastructure.csproj" />
+    <ProjectReference Include="..\VideoDubbing.Contracts\VideoDubbing.Contracts.csproj" />
+  </ItemGroup>
+</Project>

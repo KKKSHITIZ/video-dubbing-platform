@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AI Video Dubbing Platform</title>
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --border: #30363d; --text: #e6edf3;
+    --muted: #8b949e; --accent: #2f81f7; --ok: #3fb950; --warn: #d29922;
+    --err: #f85149; --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  header { padding: 18px 28px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  header h1 { font-size: 20px; margin: 0; }
+  header .sub { color: var(--muted); font-size: 13px; }
+  main { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 20px 28px; }
+  @media (max-width: 980px) { main { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
+  .card h2 { margin: 0 0 14px; font-size: 15px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+  video { width: 100%; border-radius: 8px; background: #000; max-height: 240px; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  label { font-size: 13px; color: var(--muted); }
+  input[type=text], input[type=file] { background: #0d1117; border: 1px solid var(--border); color: var(--text); padding: 8px 10px; border-radius: 8px; font-size: 14px; }
+  input[type=text] { width: 120px; }
+  button { background: var(--accent); color: #fff; border: none; padding: 9px 16px; border-radius: 8px; font-size: 14px; cursor: pointer; }
+  button:hover { filter: brightness(1.1); }
+  button.secondary { background: #21262d; border: 1px solid var(--border); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .drop { border: 2px dashed var(--border); border-radius: var(--radius); padding: 22px; text-align: center; color: var(--muted); cursor: pointer; font-size: 14px; }
+  .drop.over { border-color: var(--accent); color: var(--text); }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .b-pending, .b-queued { background: #1f6feb33; color: #79c0ff; }
+  .b-processing { background: #d2992233; color: #e3b341; }
+  .b-completed { background: #3fb95033; color: #7ee787; }
+  .b-failed, .b-cancelled { background: #f8514933; color: #ff7b72; }
+  .progress { height: 10px; border-radius: 5px; background: #21262d; overflow: hidden; margin-top: 8px; }
+  .progress > div { height: 100%; background: linear-gradient(90deg, #2f81f7, #3fb950); width: 0%; transition: width .4s; }
+  .muted { color: var(--muted); font-size: 13px; }
+  #error { color: var(--err); font-size: 14px; white-space: pre-wrap; }
+  .seg { border-bottom: 1px solid var(--border); padding: 10px 0; font-size: 14px; }
+  .seg .spk { color: #79c0ff; font-weight: 600; }
+  .seg .time { color: var(--muted); font-size: 12px; margin-left: 8px; }
+  .seg .src { margin: 3px 0; }
+  .seg .t { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+  .seg .t b { color: #e3b341; }
+  .log { font-family: Consolas, monospace; font-size: 12px; padding: 4px 0; border-bottom: 1px dashed var(--border); white-space: pre-wrap; }
+  /* Functional requirements tracker */
+  .req { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); align-items: flex-start; }
+  .req:last-child { border-bottom: none; }
+  .ic { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border); flex: none; margin-top: 2px; position: relative; }
+  .ic.pending { color: var(--muted); }
+  .ic.active { border-color: var(--warn); }
+  .ic.active::after { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--warn); position: absolute; inset: 50% auto auto 50%; transform: translate(-50%, -50%); animation: pulse 1s infinite; }
+  .ic.done { background: var(--ok); border-color: var(--ok); }
+  .ic.done::after { content: "✓"; color: #fff; font-size: 12px; font-weight: 700; position: absolute; inset: 50% auto auto 50%; transform: translate(-50%, -50%); }
+  .req b { font-size: 13px; display: block; }
+  .req.pending b { color: var(--muted); }
+  .eng-cat { font-size: 11px; color: var(--muted); margin-top: 6px; display: inline-block; margin-right: 4px; }
+  .eng-on { color: var(--ok); font-size: 11px; font-weight: 600; }
+  .eng-off { color: var(--warn); font-size: 11px; font-weight: 600; }
+  .eng-note { color: var(--muted); font-size: 11px; }
+  .req.active b { color: var(--warn); }
+  .req.done b { color: var(--ok); }
+  @keyframes pulse { 50% { opacity: .3; } }
+  .code { background: #0d1117; border: 1px solid var(--border); border-radius: 8px; padding: 10px; font-family: Consolas, monospace; font-size: 12px; color: #a5d6ff; white-space: pre-wrap; margin-top: 8px; }
+  .demo-note { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+  details.srt { margin-top: 8px; }
+  details.srt summary { cursor: pointer; color: var(--accent); font-size: 13px; }
+  .track { background: #21262d; color: var(--text); border: 1px solid var(--border); padding: 5px 14px; border-radius: 999px; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .track.active { border-color: var(--ok); color: var(--ok); }
+  
+
+</style>
+</head>
+<body>
+<header>
+  <h1>AI Video Dubbing Platform</h1>
+  <span class="sub">upload &#8594; diarize &#8594; transcribe &#8594; translate &#8594; voice &#8594; mux &#8594; export</span>
+  <a href="/swagger" style="margin-left:auto; color:#79c0ff; font-size:13px;">Swagger API &#8599;</a>
+</header>
+
+<main>
+  <!-- LEFT COLUMN -->
+  <section>
+    <div class="card">
+      <h2>1. Video upload</h2>
+      <video id="sourcePreview" controls playsinline loop>
+        <source src="/sample-demo.mp4" type="video/mp4" />
+      </video>
+      <p class="muted">Uploaded video &#183; Demo video (2 speakers, ~7s) &#183; MP4 / MOV / AVI / MKV &#183; max 10 minutes</p>
+
+      <div class="drop" id="drop" onclick="document.getElementById('file').click()">
+        &#11015; Click or drop a video here (MP4 / MOV / AVI / MKV, max 10 min)
+      </div>
+      <input id="file" type="file" accept="video/mp4,video/quicktime,video/x-msvideo,video/x-matroska,.mp4,.mov,.avi,.mkv" class="hidden" />
+
+      <div class="row" style="margin-top:14px;">
+        <button onclick="uploadDemo()">Upload demo video</button>
+        <button class="secondary" onclick="uploadFile()" id="uploadBtn" disabled>Upload selected file</button>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <label>Target languages</label>
+        <input id="langs" type="text" value="en,es,fr" />
+        <label>Source</label>
+        <input id="srcLang" type="text" value="auto" />
+      </div>
+      <div class="row" style="margin-top:10px;display:none;">
+        <label>Mode</label>
+        <select id="mode" onchange="onModeChange()">
+          <option value="Dub">Dub (re-voice)</option>
+          <option value="Subtitles">Subtitles (original captions)</option>
+        </select>
+        <label>Subtitles</label>
+        <select id="subs">
+          <option value="Translated">Translated</option>
+          <option value="Original">Original</option>
+          <option value="None">None</option>
+        </select>
+      </div>
+      <div class="row" style="margin-top:10px;display:none;" id="themeRow">
+        <label>Remix theme</label>
+        <input id="theme" type="text" style="flex:1;" placeholder="e.g. as a pirate news report with a robot sidekick" />
+      </div>
+      <div id="error" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="card" style="margin-top:20px;">
+      <h2>Functional requirements (live)</h2>
+      <div id="reqs"></div>
+    </div>
+
+    <div class="card" style="margin-top:20px;" id="statusCard">
+      <h2>Processing status</h2>
+      <div class="row">
+        <span class="badge b-pending hidden" id="stBadge">-</span>
+        <span class="muted" id="stageText">No job yet</span>
+        <span style="flex:1"></span>
+        <span class="muted" id="jobInfo"></span>
+      </div>
+      <div class="progress"><div id="progressBar"></div></div>
+      <div class="row" style="margin-top:12px;">
+        <button class="secondary" id="retryBtn" disabled onclick="retryJob()">Retry failed processing</button>
+        <button class="secondary" id="cancelBtn" disabled onclick="cancelJob()">Cancel processing</button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:20px;" id="outputsCard">
+      <h2>Outputs</h2>
+      <div id="outputs"><span class="muted">Dubbed video, transcripts and SRT subtitles will appear here.</span></div>
+    </div>
+  </section>
+
+  <!-- RIGHT COLUMN -->
+  <section>
+    <div class="card">
+      <h2>Transcript</h2>
+      <div id="transcript"><span class="muted">Complete a job to see the transcript with speakers.</span></div>
+    </div>
+    <div class="card" style="margin-top:20px;">
+      <h2>Processing logs</h2>
+      <div id="logs"><span class="muted">Logs will appear here while the job runs.</span></div>
+    </div>
+  </section>
+</main>
+
+<script>
+"use strict";
+
+const $ = (id) => document.getElementById(id);
+let jobId = null, timer = null, selectedFile = null;
+const TERMINAL = ["Completed", "Failed", "Cancelled"];
+const STAGES = ["ExtractingAudio", "Diarizing", "Transcribing", "Translating", "Synthesizing", "Synchronizing", "Completed"];
+
+// ISO code -> native display name (fr → French, es → Español …)
+const LANG_NAME = {
+  en: "English", fr: "French", es: "Español", de: "Deutsch", it: "Italiano", pt: "Português",
+  nl: "Nederlands", ru: "Русский", hi: "हिन्दी", bn: "বাংলা", zh: "中文", ja: "日本語",
+  ko: "한국어", ar: "العربية", tr: "Türkçe", pl: "Polski", sv: "Svenska", da: "Dansk",
+  nb: "Norsk", fi: "Suomi", cs: "Čeština", hu: "Magyar", ro: "Română", uk: "Українська", el: "Ελληνικά"
+};
+function ln(code) { return LANG_NAME[(code || "").toLowerCase()] || code || ""; }
+function langLabel(code) { const n = ln(code); return code && n !== code ? `${n} (${code})` : (n || code); }
+
+const BADGE = {
+  Pending: "b-pending", Queued: "b-queued", Processing: "b-processing",
+  Completed: "b-completed", Failed: "b-failed", Cancelled: "b-cancelled"
+};
+
+// Requirement definitions: stage = pipeline stage that marks it "doing"
+const REQS = [
+  { n: 1, title: "Video Upload", stage: null, bullets: ["REST upload API (multipart/form-data)", "MP4 / MOV / AVI / MKV", "Max 10 minutes", "Rejects unsupported formats & oversized files"] },
+  { n: 2, title: "Speaker Diarization", stage: "Diarizing", bullets: ["Multiple speakers", "Speaker boundaries", "Speaking duration", "Speaker timeline", "Consistent speaker identity"] },
+  { n: 3, title: "Speech Recognition", stage: "Transcribing", bullets: ["Automatic language detection", "Timestamped transcripts", "Multi-speaker handling"] },
+  { n: 4, title: "Translation", stage: "Translating", bullets: ["Preserves context, tone & flow", "Keeps speaker mapping", "Multiple target languages"] },
+  { n: 5, title: "AI Voice Generation", stage: "Synthesizing", bullets: ["Per-speaker voices", "Voice consistency", "Emotional tone (where possible)"] },
+  { n: 6, title: "Audio-Video Synchronization", stage: "Synchronizing", bullets: ["Best-effort lip-sync", "Timing alignment", "Subtitle synchronization"] },
+  { n: 7, title: "Output Generation", stage: "Completed", bullets: ["Dubbed video", "Transcript", "SRT subtitles", "Processing logs"] },
+  { n: 8, title: "Processing Status APIs", stage: null, bullets: ["Status, transcript, download, retry, cancel", "Live progress (SSE)"] }
+];
+
+function reqHtml(r, state) {
+  return `<div class="req ${state}" id="req${r.n}">
+    <span class="ic ${state}"></span>
+    <div style="flex:1;">
+      <b>${r.n}. ${r.title}</b>
+    </div>
+  </div>`;
+}
+
+function engineHtml(cat, prim, fb) {
+  const chain = `${prim}${(fb && fb.length ? " → " + fb.join(" → ") : "")}`;
+  return `<span class="eng-cat">${cat}:</span> <span class="${prim === "Mock" || (prim && prim.endsWith("Unconfigured")) ? "eng-off" : "eng-on"}">${esc(chain)}</span>`;
+}
+function engNote(n) { return `<span class="eng-note">&#183; ${n}</span>`; }
+
+async function loadEngineInfo() {
+  try {
+    const r = await fetch("/api/v1/diag/providers");
+    if (!r.ok) return;
+    const d = await r.json();
+    const put = (n, html) => { const el = $("req" + n); if (el) el.insertAdjacentHTML("beforeend", html); };
+    put(2, engineHtml("Engine", "Vosk", []) + engNote("auto diarization"));
+    put(3, engineHtml("Engine", d.speechToText.primary, d.speechToText.fallbacks) + engNote("timestamped + multi-speaker"));
+    put(4, engineHtml("Engine", d.translation.primary, d.translation.fallbacks) + engNote("multi-target: yes"));
+    put(5, engineHtml("Engine", d.voice.primary, d.voice.fallbacks) + engNote("per-speaker synthesis"));
+    put(6, `<span class="eng-cat">Engine:</span> <span class="eng-on">FFmpeg</span> ${engNote("timing-align · lip-sync: Passthrough · subtitles sync")}`);
+  } catch (e) { /* offline */ }
+}
+
+function renderReqs() {
+  $("reqs").innerHTML = REQS.filter(r => r.n !== 7 && r.n !== 8).map(r => reqHtml(r, "pending")).join("");
+  loadEngineInfo();
+}
+function updateReqs(status) {
+  const cur = status.status === "Completed" ? STAGES.length - 1 : STAGES.indexOf(status.stage);
+  REQS.forEach(r => {
+    const el = $("req" + r.n);
+    if (!el) return;
+    let state = "pending";
+    if (r.n === 1 || r.n === 8) {
+      state = jobId ? "done" : "pending";
+    } else if (r.stage) {
+      const k = STAGES.indexOf(r.stage);
+      if (status.status === "Completed" || cur > k) state = "done";
+      else if (cur === k) state = "active";
+    }
+    el.className = "req " + state;
+  });
+}
+
+// --- file selection ---
+const drop = $("drop"), fileInput = $("file");
+drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("over"); });
+drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+drop.addEventListener("drop", e => {
+  e.preventDefault(); drop.classList.remove("over");
+  if (e.dataTransfer.files.length) selectFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener("change", () => { if (fileInput.files.length) selectFile(fileInput.files[0]); });
+
+function selectFile(f) {
+  selectedFile = f;
+  $("sourcePreview").src = URL.createObjectURL(f);
+  $("uploadBtn").disabled = false;
+  setError("");
+}
+
+// --- uploads ---
+function langs() { return $("langs").value.split(",").map(s => s.trim()).filter(Boolean).join(","); }
+function setError(msg) { $("error").textContent = msg || ""; }
+function onModeChange() {
+  $("themeRow").style.display = $("mode").value === "Remix" ? "" : "none";
+}
+
+async function upload(blob, name, type) {
+  const modeValue = $("mode").value;
+  const captionOnly = modeValue === "Subtitles" || modeValue === "Transcript";
+  const langsValue = langs();
+  if (!langsValue && !captionOnly) { setError("Enter at least one target language."); return; }
+  if (captionOnly && langsValue) { $("langs").value = ""; }
+  setError(""); stop();
+  const fd = new FormData();
+  fd.append("video", new File([blob], name, { type }), name);
+  fd.append("targetLanguages", langsValue || "");
+  fd.append("sourceLanguage", $("srcLang").value.trim() || "auto");
+  fd.append("mode", modeValue);
+  fd.append("subtitles", $("subs").value);
+  if (modeValue === "Remix") fd.append("remixTheme", $("theme").value.trim());
+  showStatus("Queued", "Uploading...", 5);
+  try {
+    const r = await fetch("/api/v1/jobs/upload", { method: "POST", body: fd });
+    const body = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(body.error || body.detail || ("Upload failed: " + r.status));
+    jobId = body.jobId;
+    $("jobInfo").textContent = "Job " + jobId.slice(0, 8) + "…";
+    updateReqs({ stage: "Uploaded", status: "Queued" });
+    poll();
+  } catch (e) { setError(e.message); clearStatus(); }
+}
+
+async function uploadDemo() {
+  try {
+    const r = await fetch("/sample-demo.mp4");
+    const blob = await r.blob();
+    await upload(blob, "sample-demo.mp4", "video/mp4");
+  } catch (e) { setError("Could not load demo video: " + e.message); }
+}
+
+function uploadFile() {
+  if (!selectedFile) { setError("Select a file first."); return; }
+  upload(selectedFile, selectedFile.name, selectedFile.type || "application/octet-stream");
+}
+
+// --- polling ---
+function poll() {
+  clearInterval(timer);
+  timer = setInterval(async () => {
+    try {
+      const r = await fetch("/api/v1/jobs/" + jobId);
+      const s = await r.json();
+      renderStatus(s);
+      updateReqs(s);
+      if (s.status === "Processing") { loadTranscript(true); loadLogs(); }
+      if (TERMINAL.includes(s.status)) {
+        clearInterval(timer);
+        if (s.status === "Completed") { loadTranscript(); loadOutputs(s); }
+        loadLogs();
+        $("retryBtn").disabled = !(s.status === "Failed" || s.status === "Cancelled");
+        $("cancelBtn").disabled = true;
+      }
+    } catch (e) { /* transient */ }
+  }, 1200);
+}
+
+function renderStatus(s) {
+  for (const k in BADGE) $("stBadge").classList.remove(BADGE[k]);
+  $("stBadge").classList.remove("hidden");
+  $("stBadge").textContent = s.status;
+  $("stBadge").classList.add(BADGE[s.status] || "b-pending");
+  $("stageText").textContent = s.status === "Processing" ? s.stage : s.status;
+  $("progressBar").style.width = (s.progressPercent || 0) + "%";
+  $("cancelBtn").disabled = !["Pending", "Queued", "Processing"].includes(s.status);
+  if (s.errorMessage) setError("Failed: " + s.errorMessage);
+}
+
+function showStatus(badge, stage, progress) {
+  $("stBadge").classList.remove("hidden");
+  $("stBadge").textContent = badge;
+  $("stageText").textContent = stage;
+  $("progressBar").style.width = (progress || 0) + "%";
+}
+function clearStatus() {
+  $("stBadge").classList.add("hidden");
+  $("stageText").textContent = "No job yet";
+  $("progressBar").style.width = "0%";
+}
+function stop() {
+  if (timer) { clearInterval(timer); timer = null; }
+  renderDemoOutputs();
+  $("retryBtn").disabled = true;
+}
+
+// --- retry / cancel ---
+async function retryJob() {
+  if (!jobId) return;
+  setError("");
+  const r = await fetch(`/api/v1/jobs/${jobId}/retry`, { method: "POST" });
+  if (!r.ok) { const b = await r.json().catch(() => ({})); setError(b.error || b.detail || "Retry failed"); return; }
+  $("retryBtn").disabled = true;
+  poll();
+}
+async function cancelJob() {
+  if (!jobId) return;
+  setError("");
+  const r = await fetch(`/api/v1/jobs/${jobId}/cancel`, { method: "POST" });
+  if (!r.ok) { const b = await r.json().catch(() => ({})); setError(b.error || b.detail || "Cancel failed"); return; }
+}
+
+// --- outputs ---
+let srtFetches = {};
+async function fetchSrt(l) {
+  try {
+    if (srtFetches[l]) return srtFetches[l];
+    srtFetches[l] = (async () => {
+      const r = await fetch(`/api/v1/jobs/${jobId}/subtitles?language=${l}&t=${Date.now()}`, { headers: { accept: "text/plain" } });
+      if (!r.ok) throw new Error("srt " + r.status);
+      return await r.text();
+    })();
+    return await srtFetches[l];
+  } catch { return "// subtitles unavailable"; }
+}
+async function loadOutputs(s) {
+  const mode = s.mode || "Dub";
+  const languages = s.targetLanguages || [];
+  const capOnly = mode === "Subtitles" || mode === "Transcript";
+  const single = languages[0] || s.detectedLanguage || "en";
+  const t = Date.now();
+  const card = (id, title, badge, inner) => `
+    <div style="padding:10px 0;border-top:1px solid var(--border);">
+      <div class="row"><b>${title}</b><span class="badge b-completed">${badge}</span></div>
+      ${inner}
+    </div>`;
+
+  const audioCard = capOnly ? "" : card("", "Extracted audio", "from source video",
+    `<audio controls style="width:100%;margin-top:8px;">
+       <source src="/api/v1/jobs/${jobId}/audio?t=${t}" type="audio/wav" />
+     </audio>`);
+
+  const allLangs = [...new Set([s.detectedLanguage, ...languages].filter(Boolean).map(x => x.toLowerCase()))];
+  const dlChips = (lang) => `
+      <span class="badge b-completed" style="margin-right:8px;">${esc(langLabel(lang))}</span>
+      <a class="badge b-completed" href="/api/v1/jobs/${jobId}/transcript/${encodeURIComponent(lang)}" download>TXT</a>
+      <a class="badge b-completed" href="/api/v1/jobs/${jobId}/transcript" download>JSON</a>
+      <a class="badge b-completed" href="/api/v1/jobs/${jobId}/subtitles?language=${encodeURIComponent(lang)}" download>SRT</a>
+      <a class="badge b-completed" href="/api/v1/jobs/${jobId}/vtt?language=${encodeURIComponent(lang)}" download>VTT</a>`;
+  const dlRow = allLangs.map(l => `<div class="row" style="margin-top:6px;">${dlChips(l)}</div>`).join("");
+
+  let mainCard = "";
+  if (mode === "Transcript") {
+    mainCard = card("", "Transcript", "diarized transcript",
+      `<div style="margin-top:8px;">${dlRow}</div>`);
+  } else if (mode === "Subtitles") {
+    mainCard = card("", "Video (original audio)", "subtitles mode",
+      `<video controls playsinline preload="metadata" style="width:100%;margin-top:8px;border-radius:8px;">
+         <source src="/api/v1/jobs/${jobId}/source?t=${t}" type="video/mp4" />
+       </video>
+       <div style="margin-top:8px;">${dlRow}</div>`);
+  } else {
+    mainCard = card("", "Dubbed video", "audio track change karke language select karo &#8212; YouTube style",
+      `<div id="trackPicker" class="row" style="margin:8px 0;">
+        <button type="button" class="track active" onclick="setTrack('source', this)">Original</button>
+        ${languages.map(l => `<button type="button" class="track" onclick="setTrack('${esc(l)}', this)">${esc(langLabel(l))}</button>`).join("")}
+      </div>
+      <video id="dubbedMain" controls playsinline preload="metadata" style="width:100%;border-radius:8px;">
+        <source src="/api/v1/jobs/${jobId}/source?t=${t}" type="video/mp4" />
+      </video>
+      <details class="srt">
+        <summary>Subtitles &#183; <span id="srtLang">source</span></summary>
+        <pre id="srtPre" class="code">${esc(srtSource)}</pre>
+      </details>
+      <div class="row" style="margin-top:8px;" id="mainDls">
+        <a id="dlVideo" class="badge b-completed" href="/api/v1/jobs/${jobId}/source" download>Download video (current track)</a>
+        <a id="dlTxt" class="badge b-completed" href="/api/v1/jobs/${jobId}/transcript/${encodeURIComponent(s.detectedLanguage || single)}" download>Download TXT</a>
+        <a id="dlSrt" class="badge b-completed" href="/api/v1/jobs/${jobId}/subtitles?language=${encodeURIComponent(s.detectedLanguage || single)}" download>Download SRT</a>
+        <a id="dlVtt" class="badge b-completed" href="/api/v1/jobs/${jobId}/vtt?language=${encodeURIComponent(s.detectedLanguage || single)}" download>Download VTT</a>
+      </div>`);
+  }
+
+  $("outputs").innerHTML = [audioCard, mainCard].join("");
+  const v = $("dubbedMain"); if (v) v.load();
+}
+
+let srtPre = "";
+let srtSource = "...";
+let activeTrack = "source";
+
+async function setTrack(lang, btn) {
+  activeTrack = lang;
+  document.querySelectorAll("#trackPicker .track").forEach(b => b.classList.remove("active"));
+  if (btn) btn.classList.add("active");
+  const v = $("dubbedMain");
+  const wasPlaying = v && !v.paused;
+  const t = v ? v.currentTime : 0;
+  const src = lang === "source"
+    ? `/api/v1/jobs/${jobId}/source?t=${Date.now()}`
+    : `/api/v1/jobs/${jobId}/video?language=${encodeURIComponent(lang)}&t=${Date.now()}`;
+  if (v) {
+    const onReady = () => { v.currentTime = t; if (wasPlaying) v.play().catch(() => {}); v.removeEventListener("loadedmetadata", onReady); };
+    v.addEventListener("loadedmetadata", onReady);
+    v.src = src;
+    v.load();
+  }
+  $("dlVideo").href = lang === "source" ? `/api/v1/jobs/${jobId}/source` : `/api/v1/jobs/${jobId}/video?language=${encodeURIComponent(lang)}`;
+  $("dlTxt").href = `/api/v1/jobs/${jobId}/transcript/${encodeURIComponent(lang)}`;
+  $("dlSrt").href = `/api/v1/jobs/${jobId}/subtitles?language=${encodeURIComponent(lang)}`;
+  $("dlVtt").href = `/api/v1/jobs/${jobId}/vtt?language=${encodeURIComponent(lang)}`;
+  $("srtLang").textContent = langLabel(lang);
+  if (lang === "source") {
+    $("srtPre").textContent = srtSource;
+  } else {
+    $("srtPre").textContent = await fetchSrt(lang);
+  }
+}
+
+async function loadTranscript(live) {
+  try {
+    const r = await fetch(`/api/v1/jobs/${jobId}/transcript`);
+    if (!r.ok) return;
+    const t = await r.json();
+    const segments = (t.segments || []);
+    if (live && segments.length === 0) {
+      $("transcript").innerHTML = "<span class='muted'>Transcribing… transcript will appear here as it processes.</span>";
+      return;
+    }
+    const speakers = (t.speakers || []).map(sp => `${sp.label} &#183; ${(sp.speakingDurationSeconds || 0).toFixed(1)}s`).join(" &nbsp;|&nbsp; ");
+    const segHtml = (seg) => `
+      <div class="seg">
+        <span class="spk">${esc(seg.speakerLabel)}</span><span class="time">${fmt(seg.startSeconds)} &#8594; ${fmt(seg.endSeconds)}</span>
+        <div class="src">${esc(seg.sourceText)}</div>
+      </div>`;
+let inner;
+    try {
+      const gr = await fetch(`/api/v1/jobs/${jobId}/transcript/speakers`);
+      if (gr.ok) {
+        const g = await gr.json();
+        const chunks = g.chunks || [];
+        if (chunks.length) {
+          const bySpeaker = {};
+          chunks.forEach(ch => { (bySpeaker[ch.speakerLabel || ch.speaker || "SPEAKER"] ||= []).push(ch); });
+          inner = Object.keys(bySpeaker).map(spk => `
+            <div class="card" style="padding:10px;margin-top:8px;border-left:3px solid var(--accent);">
+              <b>${esc(spk)}</b>
+              ${bySpeaker[spk].map(ch => `
+                <div class="seg">
+                  <span class="time">${fmt(ch.startSeconds)} &#8594; ${fmt(ch.endSeconds)}</span>
+                  <div class="src">${esc(ch.text)}</div>
+                </div>`).join("")}
+            </div>`).join("");
+        } else {
+          const off = (g.speakers || []).filter(sp => sp.segments.length).map(sp => `
+            <div class="card" style="padding:10px;margin-top:8px;border-left:3px solid var(--accent);">
+              <b>${esc(sp.label)}</b> <span class="muted">&#183; ${(sp.speakingDurationSeconds || 0).toFixed(1)}s</span>
+              ${(sp.segments || []).map(segHtml).join("")}
+            </div>`).join("");
+          inner = off || (segments.map(segHtml).join(""));
+        }
+      } else {
+        inner = segments.map(segHtml).join("");
+      }
+    } catch (e) { inner = segments.map(segHtml).join(""); }
+    $("transcript").innerHTML =
+      `<p class="muted">Language: ${esc(langLabel(t.detectedLanguage))} &nbsp; Speakers: ${speakers || "—"}</p>` + (inner || "<span class='muted'>No segments.</span>");
+    srtSource = (t.segments || []).map(seg => `${seg.speakerLabel}: ${seg.sourceText}`).join("\n");
+  } catch (e) { if (!live) $("transcript").textContent = "Transcript unavailable."; }
+}
+
+async function loadLogs() {
+  try {
+    const r = await fetch(`/api/v1/jobs/${jobId}/logs`);
+    if (!r.ok) return;
+    const logs = await r.json();
+    $("logs").innerHTML = logs.map(l =>
+      `<div class="log">[${new Date(l.timestamp).toLocaleTimeString()}] ${esc(l.stage)}: ${esc(l.message)}</div>`).join("");
+  } catch (e) { /* ignore */ }
+}
+
+// --- helpers ---
+function esc(s) { return (s || "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
+function fmt(sec) {
+  sec = Math.max(0, sec || 0);
+  const h = String(Math.floor(sec / 3600)).padStart(2, "0");
+  const m = String(Math.floor((sec % 3600) / 60)).padStart(2, "0");
+  const s = String(Math.floor(sec % 60)).padStart(2, "0");
+  return `${h}:${m}:${s}`;
+}
+
+// --- demo preview of requirement 7 outputs (visible before any job runs) ---
+const DEMO_SRT = `1
+00:00:00,000 --> 00:00:01,000
+SPEAKER_00: [fr] Bonjour à toutes et à tous.
+
+2
+00:00:01,800 --> 00:00:02,800
+SPEAKER_01: [fr] Parlons de la traduction vidéo automatique.`;
+
+const DEMO_SRT_ES = `1
+00:00:00,000 --> 00:00:01,000
+SPEAKER_00: [es] Hola a todos.
+
+2
+00:00:01,800 --> 00:00:02,800
+SPEAKER_01: [es] Hablemos de la traducción de vídeo automática.`;
+
+const DEMO_TRANSCRIPT = `<p class="muted">Language: <b>en</b> &nbsp; Speakers: SPEAKER_00 · 2.0s &nbsp;|&nbsp; SPEAKER_01 · 2.0s <span class="demo-note">(demo preview)</span></p>
+  <div class="seg">
+    <span class="spk">[SPEAKER_00]:</span>
+    <div class="src" style="display:inline;">SPEAKER_00 speaking in segment 1.</div>
+  </div>
+  <div class="seg">
+    <span class="spk">[SPEAKER_01]:</span>
+    <div class="src" style="display:inline;">SPEAKER_01 speaking in segment 2.</div>
+  </div>`;
+
+const DEMO_LOGS = [
+  "[10:00:02] Probe: Media probed: 7.2s, mp4, video 320x240, hasAudio=True",
+  "[10:00:03] ExtractAudio: Extracted audio track -> audio.wav",
+  "[10:00:03] Diarize: Detected 2 speakers (SPEAKER_00, SPEAKER_01)",
+  "[10:00:04] Transcribe: Detected language 'en', 4 segments",
+  "[10:00:05] Translate: es done, fr done (speaker mapping preserved)",
+  "[10:00:06] Synthesize: 4 clips per language (per-speaker voice)",
+  "[10:00:07] SynchronizeAndExport: Muxed dubbed video + SRT per language",
+  "[10:00:08] Pipeline: Job completed (100%)"
+];
+
+function renderDemoOutputs() {
+  $("outputs").innerHTML = `
+    <div class="demo-note">Demo preview — upload a video to replace these with your live outputs.</div>
+    <div style="padding:10px 0;border-top:1px solid var(--border);">
+      <div class="row"><b>Extracted audio</b><span class="badge b-completed">ExtractAudio stage</span></div>
+      <audio controls style="width:100%;margin-top:8px;">
+        <source src="/sample-extracted-audio.wav" type="audio/wav" />
+      </audio>
+    </div>
+    <div style="padding:10px 0;border-top:1px solid var(--border);">
+      <div class="row"><b>es</b><span class="badge b-completed">same video &#183; translated audio (demo)</span><span class="badge b-completed">SRT</span></div>
+      <video id="dubbed0" controls playsinline loop style="margin-top:8px;">
+        <source src="/sample-demo.mp4" type="video/mp4" />
+      </video>
+      <details class="srt">
+        <summary>Subtitles (es).srt</summary>
+        <pre class="code">${esc(DEMO_SRT_ES)}</pre>
+      </details>
+    </div>
+    <div style="padding:10px 0;border-top:1px solid var(--border);">
+      <div class="row"><b>fr</b><span class="badge b-completed">same video &#183; translated audio (demo)</span><span class="badge b-completed">SRT</span></div>
+      <video id="dubbed1" controls playsinline loop style="margin-top:8px;">
+        <source src="/sample-demo.mp4" type="video/mp4" />
+      </video>
+      <details class="srt">
+        <summary>Subtitles (fr).srt</summary>
+        <pre class="code">${esc(DEMO_SRT)}</pre>
+      </details>
+    </div>`;
+  $("transcript").innerHTML = DEMO_TRANSCRIPT;
+  $("logs").innerHTML = DEMO_LOGS.map(l => `<div class="log">${l}</div>`).join("")
+    + `<div class="demo-note" style="margin-top:6px;">Processing logs (demo preview).</div>`;
+}
+
+renderReqs();
+renderDemoOutputs();
+</script>
+</body>
+</html>

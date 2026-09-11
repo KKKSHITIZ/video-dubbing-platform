@@ -1,0 +1,29 @@
+# Build output
+bin/
+obj/
+artifacts/
+publish/
+*.user
+
+# Local data / storage root
+data/
+*.db
+*.sqlite
+
+# User / OS
+.vs/
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
+.idea/
+*.suo
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Secret files
+*.local.json
+secrets/

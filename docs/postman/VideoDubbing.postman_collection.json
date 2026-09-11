@@ -1,0 +1,102 @@
+{
+  "info": {
+    "_postman_id": "7f8e3a2b-9c1d-4a5e-8f6b-1d2e3f4a5b6c",
+    "name": "Video Dubbing Platform",
+    "description": "AI-Powered Video Dubbing Platform REST API. Base URL: http://localhost:5080",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }
+      }
+    },
+    {
+      "name": "Upload video",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "video", "type": "file", "src": "/path/to/input.mp4" },
+            { "key": "targetLanguages", "value": "es,fr", "type": "text" },
+            { "key": "sourceLanguage", "value": "auto", "type": "text" }
+          ]
+        },
+        "url": { "raw": "{{baseUrl}}/api/v1/jobs/upload", "host": ["{{baseUrl}}"], "path": ["api", "v1", "jobs", "upload"] }
+      }
+    },
+    {
+      "name": "Get job status",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/v1/jobs/{{jobId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "jobs", "{{jobId}}"], "variable": [{ "key": "jobId", "value": "" }] }
+      }
+    },
+    {
+      "name": "Get transcript",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/v1/jobs/{{jobId}}/transcript", "host": ["{{baseUrl}}"], "path": ["api", "v1", "jobs", "{{jobId}}", "transcript"] }
+      }
+    },
+    {
+      "name": "Download dubbed video",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/v1/jobs/{{jobId}}/video?language=es", "host": ["{{baseUrl}}"], "path": ["api", "v1", "jobs", "{{jobId}}", "video"], "query": [{ "key": "language", "value": "es" }] }
+      }
+    },
+    {
+      "name": "Download SRT subtitles",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/v1/jobs/{{jobId}}/subtitles?language=es", "host": ["{{baseUrl}}"], "path": ["api", "v1", "jobs", "{{jobId}}", "subtitles"], "query": [{ "key": "language", "value": "es" }] }
+      }
+    },
+    {
+      "name": "Get processing logs",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/v1/jobs/{{jobId}}/logs", "host": ["{{baseUrl}}"], "path": ["api", "v1", "jobs", "{{jobId}}", "logs"] }
+      }
+    },
+    {
+      "name": "Retry job",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/v1/jobs/{{jobId}}/retry", "host": ["{{baseUrl}}"], "path": ["api", "v1", "jobs", "{{jobId}}", "retry"] }
+      }
+    },
+    {
+      "name": "Cancel job",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/v1/jobs/{{jobId}}/cancel", "host": ["{{baseUrl}}"], "path": ["api", "v1", "jobs", "{{jobId}}", "cancel"] }
+      }
+    },
+    {
+      "name": "Progress stream (SSE)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/v1/jobs/{{jobId}}/events", "host": ["{{baseUrl}}"], "path": ["api", "v1", "jobs", "{{jobId}}", "events"] }
+      }
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5080" },
+    { "key": "jobId", "value": "" }
+  ]
+}
