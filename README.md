@@ -404,3 +404,7 @@ curl.exe -X POST "http://localhost:5043/api/v1/jobs/upload" `
 
 Poll status, view transcripts, and download the dubbed video via the [Jobs API](#api-overview).
 Swagger UI: **http://localhost:5043/swagger**.
+
+## WALKTHROUGH VIDEO LINK 
+youtube : youtube.com/watch?si=jDp-HuiLToGArYLX&v=6kDjkS4Q6TU&feature=youtu.be
+
