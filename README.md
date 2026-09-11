@@ -358,9 +358,9 @@ Full reference, including request/response examples: [`docs/API.md`](docs/API.md
 dotnet test VideoDubbingPlatform.sln
 ```
 
-- **Unit tests (69)** — domain state machine, upload validation, provider routing/fallback,
+- **Unit tests (111)** — domain state machine, upload validation, provider routing/fallback,
   storage security, subtitle formatting, pipeline orchestration & steps, provider behavior,
-  Video Localization manager (upload → poll → stream download).
+  transcript normalization, Video Localization manager (upload → poll → stream download).
 - **Integration tests (8)** — boot the real API host (WebApplicationFactory) against a
   SQLite database with a stubbed media processor and drive upload → status → transcript →
   download, retry, cancel, and a full end-to-end pipeline run.
@@ -384,6 +384,7 @@ CI runs `dotnet build` + `dotnet test` (see `.github/workflows/ci.yml`).
 | Document | Description |
 |----------|-------------|
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | High-level architecture, component interactions, pipeline, queue, scaling, failure recovery, deployment, trade-offs, diagrams |
+| [`docs/ARCHITECTURE_REFERENCE.md`](docs/ARCHITECTURE_REFERENCE.md) | **Fact-based reference** mirroring the actual code: overall architecture, code organization, configuration, AI abstraction, workflow, queue, scalability, fault tolerance, API, Docker status, challenges & decisions |
 | [`DESIGN_DECISIONS.md`](DESIGN_DECISIONS.md) | Key design decisions and rationale |
 | [`docs/API.md`](docs/API.md) | REST API reference |
 | [`docs/CONFIGURATION.md`](docs/CONFIGURATION.md) | Configuration & env-var guide |
@@ -392,11 +393,14 @@ CI runs `dotnet build` + `dotnet test` (see `.github/workflows/ci.yml`).
 
 ---
 
-## Walkthrough Video
+## Usage
 
-> The mandatory 15–20 minute walkthrough video demonstrates: architecture, code
-> organization, configuration management, AI model abstraction, processing workflow, queue
-> architecture, scalability approach, fault tolerance, API demonstration, and key design
-> decisions.
+Upload a video and dub it into one or more target languages:
 
-**Video link (YouTube / Google Drive / Loom):** _add link here before submission._
+```powershell
+curl.exe -X POST "http://localhost:5043/api/v1/jobs/upload" `
+  -F "video=@movie.mp4" -F "targetLanguage=fr" -F "targetLanguage=es"
+```
+
+Poll status, view transcripts, and download the dubbed video via the [Jobs API](#api-overview).
+Swagger UI: **http://localhost:5043/swagger**.
